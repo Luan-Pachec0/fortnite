@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Browser profile (Cloudflare cookies)
+.browser_profile/
+
+# Debug files
+*.html
+!frontend/**/*.html
+debug_*.json
+debug_*.py
+*_debug.*
+full_dump.json
+modes_dump.json
+all_stats.json
+resultado_completo.json

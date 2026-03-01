@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fortnite Stats Hub</title>
+    <meta name="description"
+        content="Dashboard premium de estatísticas de Fortnite com gráficos comparativos e análise detalhada por modo.">
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Background animado -->
+    <div class="bg-glow"></div>
+    <div class="bg-glow bg-glow-secondary"></div>
+
+    <div class="container">
+
+        <header class="header">
+            <h1 class="logo">FTNT <span>STATS</span></h1>
+
+            <div class="search-box">
+                <input type="text" id="usernameInput" placeholder="Nome Epic Games..." onkeypress="handleEnter(event)">
+                <button onclick="fetchStats()" id="searchBtn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <div class="quick-links">
+                <span onclick="setAndFetch('034 Moreira')">Moreira</span>
+                <span onclick="setAndFetch('Aloisio8606')">Aloisio</span>
+                <span onclick="setAndFetch('Bicho_solto_007')">Bicho</span>
+                <span onclick="setAndFetch('Bonnie_Clydee')">Bonnie</span>
+                <span onclick="setAndFetch('LUAanZeRaaaa')">LUAanZeRaaaa</span>
+            </div>
+        </header>
+
+        <!-- Loader State -->
+        <div id="loader" class="state-container hidden">
+            <div class="spinner"></div>
+            <h3 id="loaderStatus">Aguardando Servidor...</h3>
+            <p>Se demorar mais de 10s, talvez seja necessário aprovar o Cloudflare na janela do servidor.</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorBox" class="state-container error-state hidden">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3 id="errorMessage">Erro ao buscar jogador</h3>
+        </div>
+
+        <!-- Dashboard Content -->
+        <main id="dashboard" class="dashboard hidden">
+
+            <!-- Perfil Header -->
+            <section class="profile-header glass-card">
+                <div class="profile-info">
+                    <h2 id="playerName">-</h2>
+                    <div class="badges">
+                        <span class="badge" id="playTime"><i class="far fa-clock"></i> -</span>
+                        <span class="badge bp-badge" id="bpLevel"><i class="fas fa-star"></i> BP -</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ranks (Dinâmicos - até 4) -->
+            <section id="ranksGrid" class="ranks-grid">
+                <!-- Gerado via JS -->
+            </section>
+
+            <!-- Resumo Períodos (7/30 dias) -->
+            <section class="period-stats glass-card">
+                <h3><i class="fas fa-calendar-week"></i> Desempenho Recente</h3>
+                <div class="period-grid">
+                    <div class="period-col">
+                        <h4>7 Dias</h4>
+                        <div class="stat-row"><span>Partidas</span> <strong id="p7Matches">-</strong></div>
+                        <div class="stat-row"><span>Vitórias</span> <strong class="text-win" id="p7Wins">-</strong>
+                        </div>
+                        <div class="stat-row"><span>Abates/Mortes</span> <strong class="text-accent"
+                                id="p7KD">-</strong></div>
+                        <div class="stat-row"><span>Abates</span> <strong id="p7Kills">-</strong></div>
+                    </div>
+                    <div class="period-col">
+                        <h4>30 Dias</h4>
+                        <div class="stat-row"><span>Partidas</span> <strong id="p30Matches">-</strong></div>
+                        <div class="stat-row"><span>Vitórias</span> <strong class="text-win" id="p30Wins">-</strong>
+                        </div>
+                        <div class="stat-row"><span>Abates/Mortes</span> <strong class="text-accent"
+                                id="p30KD">-</strong></div>
+                        <div class="stat-row"><span>Abates</span> <strong id="p30Kills">-</strong></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Modos (Todos - Dinâmicos) -->
+            <section class="modes-section">
+                <h3 class="section-title"><i class="fas fa-gamepad"></i> Estatísticas por Modo</h3>
+                <div id="modesGrid" class="modes-grid">
+                    <!-- Gerado via JS -->
+                </div>
+            </section>
+
+            <!-- Gráficos Individuais por Modo (Radar) -->
+            <section class="charts-section glass-card">
+                <h3 class="section-title"><i class="fas fa-chart-line"></i> Gráficos Individuais por Modo</h3>
+                <div id="individualChartsGrid" class="charts-grid">
+                    <!-- Canvas gerados via JS -->
+                </div>
+            </section>
+
+            <!-- Gráfico Comparativo (Bar agrupado) -->
+            <section class="charts-section glass-card">
+                <h3 class="section-title"><i class="fas fa-chart-bar"></i> Comparativo entre Modos</h3>
+                <div class="chart-container chart-container--wide">
+                    <canvas id="compareChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Partidas Recentes -->
+            <section class="recent-matches glass-card">
+                <h3><i class="fas fa-history"></i> Sessões Recentes</h3>
+                <div id="matchesContainer" class="matches-list">
+                    <!-- Gerado via JS -->
+                </div>
+            </section>
+
+            <footer class="footer">
+                <p>Lifetime: <span id="ltWins">0</span> Vitórias | <span id="ltKills">0</span> Abates</p>
+            </footer>
+
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>
