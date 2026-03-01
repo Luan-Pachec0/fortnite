@@ -6,7 +6,6 @@ import random
 from datetime import datetime, timezone
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-from playwright_stealth import Stealth
 
 # Importa a lógica do antigo controller de scraper (reaproveitada e adaptada)
 # Para evitar duplicar todo o código de parse, vamos instanciar as classes Pydantic originais (se ainda existirem)
@@ -33,7 +32,15 @@ def scrape_player_sync(username: str, context) -> dict:
     url = f"https://fortnitetracker.com/profile/all/{usuario_url}"
 
     page = context.new_page()
-    Stealth().apply_stealth_sync(page)
+
+    # Adicionando flags manuais de stealth para evitar detecção básica
+    page.set_extra_http_headers({
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+    })
 
     try:
         logger.info(f"[{username}] Acessando perfil...")
