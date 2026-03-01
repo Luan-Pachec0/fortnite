@@ -20,7 +20,83 @@ function setAndFetch(name) {
     fetchStats();
 }
 
+// Initialize Supabase Client
+// Note: Em produção, estas chaves podem ser públicas (anon key), o RLS protege os dados.
+const SUPABASE_URL = 'VAI_MUDAR_NA_HOSPEDAGEM_AQUI_COLOCAR_A_Sua';
+const SUPABASE_ANON_KEY = 'VAI_MUDAR_NA_HOSPEDAGEM_AQUI_COLOCAR_A_Sua';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Auth Elements
+const authModal = document.getElementById('authModal');
+const authEmail = document.getElementById('authEmail');
+const authBtn = document.getElementById('authBtn');
+const authMessage = document.getElementById('authMessage');
+const logoutBtn = document.getElementById('logoutBtn');
+
+let sessionUser = null;
+
+// Auth Logic
+async function checkAuth() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+        sessionUser = data.session.user;
+        authModal.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+    } else {
+        sessionUser = null;
+        authModal.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        dashboard.classList.add('hidden');
+    }
+}
+
+supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        checkAuth();
+    }
+});
+
+authBtn.addEventListener('click', async () => {
+    const email = authEmail.value.trim();
+    if (!email) return;
+
+    authBtn.disabled = true;
+    authMessage.innerText = 'Enviando link mágico...';
+    authMessage.className = 'auth-message';
+
+    const { error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+            // Em produção configurar a URL de redirecionamento no painel
+            emailRedirectTo: window.location.origin
+        }
+    });
+
+    if (error) {
+        authMessage.innerText = 'Erro: ' + error.message;
+        authMessage.className = 'auth-message auth-error';
+    } else {
+        authMessage.innerText = 'Link enviado! Verifique seu email.';
+        authMessage.className = 'auth-message auth-success';
+    }
+    authBtn.disabled = false;
+});
+
+logoutBtn.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+});
+
+// Check auth on load
+checkAuth();
+
 async function fetchStats() {
+    if (!sessionUser) {
+        errorBox.classList.remove('hidden');
+        document.getElementById('errorMessage').innerText = "Faça login para buscar stats.";
+        return;
+    }
+
     const username = usernameInput.value.trim();
     if (!username) return;
 
@@ -29,34 +105,98 @@ async function fetchStats() {
     errorBox.classList.add('hidden');
     loader.classList.remove('hidden');
 
-    // Animação de espera customizada
     const statusText = document.getElementById('loaderStatus');
-    statusText.innerText = `Buscando ${username}...`;
-    let ellipsisInterval = setInterval(() => {
-        statusText.innerText = statusText.innerText.endsWith('...')
-            ? `Buscando ${username}.` : statusText.innerText + '.';
-    }, 500);
+    statusText.innerText = `Buscando dados de ${username} no Supabase...`;
 
     try {
-        const response = await fetch(`/api/v1/fortnite/stats?username=${encodeURIComponent(username)}`);
+        // 1. Fetch Player
+        const { data: player, error: playerError } = await supabase
+            .from('players')
+            .select('id, username')
+            .ilike('username', username)
+            .single();
 
-        clearInterval(ellipsisInterval);
-
-        if (!response.ok) throw new Error('Falha na resposta do servidor');
-
-        const data = await response.json();
-
-        if (data.status === 'erro' || !data.dados_jogador) {
-            throw new Error(data.mensagem || 'Jogador não encontrado ou perfil privado.');
+        if (playerError || !player) {
+            throw new Error('Jogador não encontrado no banco de dados.');
         }
 
-        renderDashboard(data.dados_jogador);
+        // 2. Fetch Latest Snapshot
+        const { data: snapshot, error: snapError } = await supabase
+            .from('snapshots')
+            .select('id, status, scraped_at')
+            .eq('player_id', player.id)
+            .order('scraped_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (snapError || !snapshot) throw new Error('Nenhum dado raspado para este jogador.');
+        if (snapshot.status !== 'sucesso') throw new Error(`Último scraping falhou: ${snapshot.status}`);
+
+        // 3. Fetch All Associated Data concurrently
+        const snapshotId = snapshot.id;
+
+        const [
+            { data: overview },
+            { data: periodStats },
+            { data: modeStats },
+            { data: rankInfo },
+            { data: recentMatches }
+        ] = await Promise.all([
+            supabase.from('overview_stats').select('*').eq('snapshot_id', snapshotId).single(),
+            supabase.from('period_stats').select('*').eq('snapshot_id', snapshotId),
+            supabase.from('mode_stats').select('*').eq('snapshot_id', snapshotId),
+            supabase.from('rank_info').select('*').eq('snapshot_id', snapshotId),
+            supabase.from('recent_matches').select('*').eq('snapshot_id', snapshotId)
+        ]);
+
+        // Reconstruct the nested object structure expected by renderDashboard
+        const reconstructedPlayer = {
+            nome_usuario: player.username,
+            overview: {
+                tempo_de_jogo: overview?.play_time || 'N/A',
+                nivel_passe_de_batalha: overview?.battle_pass_level || 'N/A'
+            },
+            estatisticas_gerais: {
+                vitorias: overview?.wins || 0,
+                kd_ratio: overview?.kd_ratio || 0.0,
+                porcentagem_vitoria: overview?.win_percentage || '0%',
+                total_kills: overview?.total_kills || 0,
+                partidas_jogadas: overview?.total_matches || 0
+            },
+            estatisticas_periodo: (periodStats || []).map(ps => ({
+                periodo: ps.period_name,
+                partidas: ps.matches,
+                vitorias: ps.wins,
+                porcentagem_vitoria: ps.win_percentage,
+                kd_ratio: ps.kd_ratio,
+                kills: ps.kills
+            })),
+            estatisticas_por_modo: (modeStats || []).map(ms => ({
+                modo: ms.mode_name,
+                partidas: ms.matches,
+                tracker_rating: ms.tracker_rating,
+                vitorias: ms.wins,
+                porcentagem_vitoria: ms.win_percentage,
+                kills: ms.kills,
+                kd_ratio: ms.kd_ratio
+            })),
+            ranks: (rankInfo || []).map(ri => ({
+                modo: ri.mode_name,
+                rank_atual: ri.current_rank,
+                melhor_rank: ri.best_rank
+            })),
+            partidas_recentes: (recentMatches || []).map(rm => ({
+                data: rm.session_header,
+                detalhes: rm.match_details || []
+            }))
+        };
+
+        renderDashboard(reconstructedPlayer);
 
         loader.classList.add('hidden');
         dashboard.classList.remove('hidden');
 
     } catch (err) {
-        clearInterval(ellipsisInterval);
         loader.classList.add('hidden');
         document.getElementById('errorMessage').innerText = err.message;
         errorBox.classList.remove('hidden');

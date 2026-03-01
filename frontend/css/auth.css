@@ -1,0 +1,98 @@
+/* css/auth.css */
+/* Minimal additions for auth modal */
+
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-overlay.hidden {
+    display: none !important;
+}
+
+.auth-modal {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-modal h2 {
+    margin-bottom: 20px;
+    color: var(--accent);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--glass-border);
+    padding: 12px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    outline: none;
+    transition: box-shadow 0.3s;
+}
+
+.auth-input:focus {
+    box-shadow: 0 0 10px var(--accent-glow);
+    border-color: rgba(0, 210, 255, 0.4);
+}
+
+.auth-btn {
+    background: var(--accent);
+    color: #000;
+    font-weight: bold;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.auth-btn:hover {
+    background: #00bfff;
+    transform: scale(0.98);
+}
+
+.auth-message {
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.auth-error {
+    color: #ff4757;
+}
+
+.auth-success {
+    color: var(--win-color);
+}
+
+.logout-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.logout-btn:hover {
+    background: rgba(255,255,255,0.1);
+}

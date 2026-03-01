@@ -1,0 +1,4 @@
+playwright==1.49.1
+playwright-stealth==1.0.6
+supabase==2.11.0
+python-dotenv==1.0.1

@@ -17,6 +17,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+
+    <!-- Supabase JS Client (UMD) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
@@ -26,6 +30,21 @@
     <div class="bg-glow bg-glow-secondary"></div>
 
     <div class="container">
+        <!-- Auth Modal -->
+        <div id="authModal" class="modal-overlay">
+            <div class="auth-modal glass-card">
+                <h2>Acesso Restrito</h2>
+                <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 14px;">Você precisa de um Magic Link para acessar os stats.</p>
+                
+                <div class="auth-form">
+                    <input type="email" id="authEmail" class="auth-input" placeholder="Seu email cadastrado">
+                    <button id="authBtn" class="auth-btn">Enviar Magic Link</button>
+                    <div id="authMessage" class="auth-message"></div>
+                </div>
+            </div>
+        </div>
+
+        <button id="logoutBtn" class="logout-btn hidden"><i class="fas fa-sign-out-alt"></i> Sair</button>
 
         <header class="header">
             <h1 class="logo">FTNT <span>STATS</span></h1>
