@@ -21,9 +21,9 @@ def main():
     logger.info(f"Encontrados {len(players)} jogadores para processar.")
     
     with sync_playwright() as p:
-        # Modo Headless ativado para CI
+        # Modo Headless desativado para rodar localmente e evitar o bloqueio do Cloudflare
         browser = p.chromium.launch(
-            headless=True,
+            headless=False,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--disable-infobars",
