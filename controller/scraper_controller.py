@@ -9,7 +9,6 @@ from typing import List
 from concurrent.futures import ThreadPoolExecutor
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-from playwright_stealth import Stealth
 
 import logging
 
@@ -52,7 +51,15 @@ def _extrair_sync(username: str, context) -> RespostaScraping:
     url = f"https://fortnitetracker.com/profile/all/{usuario_url}"
 
     page = context.new_page()
-    Stealth().apply_stealth_sync(page)
+
+    # Adicionando flags manuais de stealth para evitar detecção básica
+    page.set_extra_http_headers({
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+    })
 
     try:
         logger.info(f"[{username}] Acessando perfil...")
@@ -60,11 +67,12 @@ def _extrair_sync(username: str, context) -> RespostaScraping:
 
         # ── Captcha / Cloudflare ────────────────────────────────────
         titulo = page.title()
-        if "Just a moment" in titulo:
-            logger.info(f"[{username}] Cloudflare detectado. Aguardando até 5 minutos para resolução...")
+        if "Just a moment" in titulo or "Cloudflare" in titulo:
+            logger.info(f"[{username}] Cloudflare detectado. Aguardando até 5 minutos para resolução manual ou automática...")
             try:
+                # Espera o seletor principal aparecer. Se o usuário resolver o captcha na janela, o seletor aparecerá.
                 page.wait_for_selector(".profile-stat--giant", timeout=300_000)
-                logger.info(f"[{username}] Desafio Cloudflare resolvido com sucesso!")
+                logger.info(f"[{username}] Desafio Cloudflare resolvido!")
             except PlaywrightTimeoutError:
                 logger.warning(f"[{username}] Não conseguiu passar do Cloudflare a tempo.")
                 return RespostaScraping(
@@ -150,6 +158,11 @@ def _extrair_sync(username: str, context) -> RespostaScraping:
         # ════════════════════════════════════════════════════════════
         # 3. LAST 7 DAYS / LAST 30 DAYS
         # ════════════════════════════════════════════════════════════
+        try:
+            page.wait_for_selector('.profile-last-stats__period, .profile-last-stats, .profile-overview', timeout=15_000)
+        except PlaywrightTimeoutError:
+            pass
+            
         periodos_raw = page.evaluate('''() => {
             const periods = [];
             document.querySelectorAll('.profile-last-stats__period, .profile-last-stats').forEach(periodEl => {
@@ -228,6 +241,11 @@ def _extrair_sync(username: str, context) -> RespostaScraping:
         # ════════════════════════════════════════════════════════════
         # 4. PER-MODE STATS (Solo, Duos, Trios, Squads, LTM)
         # ════════════════════════════════════════════════════════════
+        try:
+            page.wait_for_selector('.profile-playlist', timeout=15_000)
+        except PlaywrightTimeoutError:
+            pass
+            
         modos_raw = page.evaluate('''() => {
             const modes = [];
             
@@ -469,6 +487,10 @@ def _buscar_um_sync(username: str) -> RespostaScraping:
         )
 
         try:
+            # Força um timeout global agressivo no context e nas páginas
+            browser.set_default_timeout(60000)
+            browser.set_default_navigation_timeout(90000)
+
             # Pequeno delay humano aleatório antes de navegar
             time.sleep(random.uniform(1.0, 2.5))
             resultado = _extrair_sync(username, browser)
@@ -485,7 +507,21 @@ def _buscar_um_sync(username: str) -> RespostaScraping:
             browser.close()
 
 
+
 async def buscar_jogador(username: str) -> RespostaScraping:
     """Wrapper assíncrono — executa o scraping síncrono de UM jogador em uma thread separada."""
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, _buscar_um_sync, username)
+    try:
+        # Wrap the whole execution in an asyncio timeout (e.g., 180 seconds maximum)
+        return await asyncio.wait_for(
+            loop.run_in_executor(_executor, _buscar_um_sync, username),
+            timeout=180.0
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"[{username}] Timeout GLOBAL de execução na thread externa.")
+        return RespostaScraping(
+            metadados=Metadados(
+                data_extracao=datetime.now(timezone.utc).isoformat(),
+                status_requisicao="Erro - Timeout Servidor"
+            )
+        )

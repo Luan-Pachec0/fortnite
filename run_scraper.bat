@@ -13,6 +13,12 @@ if exist "venv\Scripts\activate.bat" (
 )
 
 REM Run the scraper
+echo Instalando/Verificando dependencias do projeto...
+python -m pip install -r scraper\requirements.txt
+python -m playwright install chromium
+
+echo.
+echo Iniciando Scraper...
 python scraper\main.py
 
 echo.
