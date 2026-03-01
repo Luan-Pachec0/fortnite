@@ -1,4 +1,5 @@
 # 🎮 Fortnite Tracker API
+Web scraping do fortnite tracker para pegar estatistica de jogadores. Projeto feito para mim e meus amigos.
 
 Uma API de web scraping avançada para extrair **TODAS** as estatísticas vitais do Fortnite (Overview, Ranks, Matches recentes, estatísticas por modo) burlando ativamente as defesas do Cloudflare do site _Fortnite Tracker_.
 
